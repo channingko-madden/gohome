@@ -1,0 +1,35 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.5
+    restart: always
+    volumes:
+      - "prom_data:/prometheus"
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+    ports:
+      - 9090:9090
+    networks:
+      - prom_net
+    extra_hosts:
+      - "rpi-host:192.168.38.1"
+  node:
+    image: prom/node-exporter:latest
+    command:
+      - "--path.rootfs=/host"
+    pid: host
+    restart: always
+    volumes:
+      - "/:/host:ro,rslave"
+    expose:
+      - 9100
+    network_mode: host
+
+volumes:
+  prom_data: {}
+
+networks:
+  prom_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.38.0/24
+          gateway: 192.168.38.1
