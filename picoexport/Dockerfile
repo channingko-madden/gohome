@@ -5,8 +5,8 @@ COPY . /app
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w"
 
 FROM docker.io/alpine:latest
-RUN mkdir /app && adduser -h /app -D picotempexport
+RUN mkdir /app && adduser -h /app -D picoexport
 WORKDIR /app
-COPY --chown=picotempexport --from=builder /app/picotempexport .
+COPY --chown=picoexport --from=builder /app/picoexport .
 EXPOSE 3030
-CMD ["/app/picotempexport"]
+CMD ["/app/picoexport"]

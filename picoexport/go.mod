@@ -1,4 +1,4 @@
-module github.com/channingko-madden/gohome/picotempexport
+module github.com/channingko-madden/gohome/picoexport
 
 go 1.23.0
 

@@ -14,3 +14,5 @@ OR
 tinygo flash -target=pico -opt=1 -stack-size=8kb -size=short .
 ```
 
+See logging info using `tinygo monitor`
+

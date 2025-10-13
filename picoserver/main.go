@@ -14,6 +14,7 @@ import (
 
 	"github.com/soypat/seqs/httpx"
 	"github.com/soypat/seqs/stacks"
+	"tinygo.org/x/drivers/bme280"
 )
 
 const (
@@ -24,9 +25,10 @@ const (
 	hostname    = "picotemp"
 )
 
-type temp struct {
+type climate struct {
 	TempC float64 `json:"tempC"`
 	TempF float64 `json:"tempF"`
+	RH    float64 `json:"rh"`
 }
 
 var logger *slog.Logger // One logger to reduce memory usage.
@@ -108,20 +110,69 @@ func blinkLED(dev *cyw43439.Device, blink chan uint) {
 	}
 }
 
-func getTemperature() *temp {
+func getPicoTemperature() *climate {
 	curTemp := machine.ReadTemperature() // in millicelcius
 
-	return &temp{
+	return &climate{
 		TempC: float64(curTemp) / 1000,
 		TempF: ((float64(curTemp) / 1000) * 9 / 5) + 32,
 	}
 }
 
-func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader) {
-	resp.SetConnectionClose()
-	logger.Info("Got temperature request...")
+func configureBME280() bme280.Device {
+	i2c := machine.I2C1
+	err := i2c.Configure(machine.I2CConfig{
+		SCL: machine.GP19,
+		SDA: machine.GP18,
+	})
+	if err != nil {
+		panic("failed to configured I2C:" + err.Error())
+	}
 
-	t := getTemperature()
+	sensor := bme280.New(i2c)
+	sensor.Configure()
+	return sensor
+}
+
+func readBME280(sensor bme280.Device) *climate {
+	connected := sensor.Connected()
+	if !connected {
+		logger.Error("failed to detect BME280 with I2C")
+		return nil
+	}
+	logger.Info("BME280 detected with I2C")
+
+	curTemp, err := sensor.ReadTemperature()
+	if err != nil {
+		logger.Error("error reading BME280 temperature", slog.String("err", err.Error()))
+		return nil
+	}
+
+	curRH, err := sensor.ReadHumidity()
+	if err != nil {
+		logger.Error("error reading BME280 relative humidity", slog.String("err", err.Error()))
+		return nil
+	}
+
+	return &climate{
+		TempC: float64(curTemp) / 1000,
+		TempF: ((float64(curTemp) / 1000) * 9 / 5) + 32,
+		RH:    float64(curRH) / 100,
+	}
+
+}
+
+func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader, sensor bme280.Device) {
+	resp.SetConnectionClose()
+	logger.Info("Got request...")
+
+	t := readBME280(sensor)
+
+	if t == nil {
+		resp.SetStatusCode(500)
+		respWriter.Write(resp.Header())
+		return
+	}
 
 	body, err := json.Marshal(t)
 
@@ -146,6 +197,8 @@ func handleConnection(listener *stacks.TCPListener, blink chan uint) {
 	// This is an embedded device remember!
 	var resp httpx.ResponseHeader
 	buf := bufio.NewReaderSize(nil, 1024)
+
+	sensor := configureBME280()
 
 	for {
 		conn, err := listener.Accept()
@@ -175,7 +228,7 @@ func handleConnection(listener *stacks.TCPListener, blink chan uint) {
 
 		buf.Reset(conn)
 		resp.Reset()
-		HTTPHandler(conn, &resp)
+		HTTPHandler(conn, &resp, sensor)
 		conn.Close()
 
 		blink <- 5

@@ -21,12 +21,13 @@ var rootPageHtml []byte
 
 var errInvalidResponse = errors.New("unexpected response from the server")
 
-type tempValues struct {
+type climateValues struct {
 	TempC float64 `json:"tempC"`
 	TempF float64 `json:"tempF"`
+	RH    float64 `json:"rh"`
 }
 
-func (tv *tempValues) getTempValues(client *http.Client, url string) error {
+func (tv *climateValues) getTempValues(client *http.Client, url string) error {
 	response, err := client.Get(url)
 	if err != nil {
 		log.Println(err)
@@ -57,7 +58,7 @@ func (tv *tempValues) getTempValues(client *http.Client, url string) error {
 // Caches the data for two seconds, preventing overloading the Pico W in case the exporter receives
 // many concurrent requests
 type metrics struct {
-	results      *tempValues
+	results      *climateValues
 	up           float64 // I'm guessing this is a float64 and not a bool b/c of some Prometheus reason
 	expire       time.Time
 	sync.RWMutex // embedded!
@@ -97,6 +98,13 @@ func (m *metrics) tempF() float64 {
 	return m.results.TempF
 }
 
+func (m *metrics) RH() float64 {
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.results.RH
+}
+
 func (m *metrics) status() float64 {
 	m.RLock()
 	defer m.RUnlock()
@@ -111,13 +119,13 @@ func newMux(url string) http.Handler {
 	}
 
 	m := &metrics{
-		results: &tempValues{},
+		results: &climateValues{},
 	}
 
 	promauto.NewGaugeFunc(
 		prometheus.GaugeOpts{
 			Name:        "pico_temperature",
-			Help:        "Pico Sensor Temperature.",
+			Help:        "BME280 Sensor Temperature.",
 			ConstLabels: prometheus.Labels{"unit": "celsius"},
 		},
 		func() float64 {
@@ -127,10 +135,20 @@ func newMux(url string) http.Handler {
 	promauto.NewGaugeFunc(
 		prometheus.GaugeOpts{
 			Name:        "pico_temperature",
-			Help:        "Pico Sensor Temperature.",
-			ConstLabels: prometheus.Labels{"unit": "fahrenheigh"}},
+			Help:        "BME280 Sensor Temperature.",
+			ConstLabels: prometheus.Labels{"unit": "fahrenheit"}},
 		func() float64 {
 			return m.getMetrics(client, url).tempF()
+		},
+	)
+
+	promauto.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name:        "pico_relative_humidity",
+			Help:        "BME280 Sensor Relative Humidity.",
+			ConstLabels: prometheus.Labels{"unit": "percent"}},
+		func() float64 {
+			return m.getMetrics(client, url).RH()
 		},
 	)
 
