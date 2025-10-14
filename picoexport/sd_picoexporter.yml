@@ -2,4 +2,4 @@
 - labels:
     job: picoexport
   targets:
-    - 'picoexport-v1:3030'
+    - 'picoexport-<name>:3030'

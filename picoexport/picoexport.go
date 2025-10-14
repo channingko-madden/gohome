@@ -111,7 +111,7 @@ func (m *metrics) status() float64 {
 	return m.up
 }
 
-func newMux(url string) http.Handler {
+func newMux(url string, picoName string) http.Handler {
 	mux := http.NewServeMux()
 
 	client := &http.Client{
@@ -124,7 +124,7 @@ func newMux(url string) http.Handler {
 
 	promauto.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name:        "pico_temperature",
+			Name:        fmt.Sprintf("%s_pico_temperature", picoName),
 			Help:        "BME280 Sensor Temperature.",
 			ConstLabels: prometheus.Labels{"unit": "celsius"},
 		},
@@ -134,7 +134,7 @@ func newMux(url string) http.Handler {
 
 	promauto.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name:        "pico_temperature",
+			Name:        fmt.Sprintf("%s_pico_temperature", picoName),
 			Help:        "BME280 Sensor Temperature.",
 			ConstLabels: prometheus.Labels{"unit": "fahrenheit"}},
 		func() float64 {
@@ -144,7 +144,7 @@ func newMux(url string) http.Handler {
 
 	promauto.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name:        "pico_relative_humidity",
+			Name:        fmt.Sprintf("%s_pico_relative_humidity", picoName),
 			Help:        "BME280 Sensor Relative Humidity.",
 			ConstLabels: prometheus.Labels{"unit": "percent"}},
 		func() float64 {
@@ -154,7 +154,7 @@ func newMux(url string) http.Handler {
 
 	promauto.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name: "pico_up",
+			Name: fmt.Sprintf("%s_pico_up", picoName),
 			Help: "Pico Sensor Server Status.",
 		},
 		func() float64 {
@@ -174,10 +174,11 @@ func newMux(url string) http.Handler {
 
 func main() {
 	picoURL := os.Getenv("PICO_SERVER_URL")
+	picoName := os.Getenv("PICO_NAME")
 
 	s := &http.Server{
 		Addr:         ":3030",
-		Handler:      newMux(picoURL),
+		Handler:      newMux(picoURL, picoName),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
