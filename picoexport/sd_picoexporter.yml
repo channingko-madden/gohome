@@ -1,5 +1,5 @@
 ---
 - labels:
-    job: picoexport
+    job: picoexport_<name>
   targets:
-    - 'picoexport-<name>:3030'
+    - 'picoexport_<name>:3030'

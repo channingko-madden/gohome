@@ -2,15 +2,16 @@
 
 For each Pico W running, launch an exporter container for it.
 
-Update the sd_picoexporter.yml file with a new name and the correct target, then
-upload into the running prometheus container for discovery.
+Update the sd_picoexporter.yml file with a new name, correct target, and correct port exposed by the exporter container.
+
+Then upload into the running prometheus container for discovery.
 
 ## Docker
 
 ```shell
-docker build -t picoexport:<name> .
+docker build -t picoexport:v1 .
 ```
 
 ```shell
-docker run -d --name picoexport-<name> -p 3030:3030 --env PICO_SERVER_URL=http://<PICO_IP> PICO_NAME=<name> --restart=always --net=prometheus_prom_net picoexport:<name>
+docker run -d --expose <port> --name picoexport-<name> -p <port>:<port> --env PICO_SERVER_URL=http://<PICO_IP> --env PICO_NAME=<name> --restart=always --net=prometheus_prom_net picoexport:v1
 ```

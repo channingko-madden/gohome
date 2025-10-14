@@ -8,5 +8,4 @@ FROM docker.io/alpine:latest
 RUN mkdir /app && adduser -h /app -D picoexport
 WORKDIR /app
 COPY --chown=picoexport --from=builder /app/picoexport .
-EXPOSE 3030
 CMD ["/app/picoexport"]
