@@ -13,5 +13,5 @@ docker build -t picoexport:v1 .
 ```
 
 ```shell
-docker run -d --expose <port> --name picoexport-<name> -p <port>:<port> --env PICO_SERVER_URL=http://<PICO_IP> --env PICO_NAME=<name> --restart=always --net=prometheus_prom_net picoexport:v1
+docker run -d --expose <port> --name picoexport-<name> -p <port>:<port> --env PICO_SERVER_URL=http://<PICO_IP> --env PICO_NAME=<name> --env PORT=<port> --restart=always --net=prometheus_prom_net picoexport:v1
 ```

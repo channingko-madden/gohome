@@ -175,9 +175,10 @@ func newMux(url string, picoName string) http.Handler {
 func main() {
 	picoURL := os.Getenv("PICO_SERVER_URL")
 	picoName := os.Getenv("PICO_NAME")
+	port := os.Getenv("PORT")
 
 	s := &http.Server{
-		Addr:         ":3030",
+		Addr:         fmt.Sprintf(":%s", port),
 		Handler:      newMux(picoURL, picoName),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
