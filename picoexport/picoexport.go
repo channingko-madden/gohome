@@ -77,6 +77,7 @@ func (m *metrics) getMetrics(client *http.Client, url string) *metrics {
 		m.up = 0
 		m.results.TempC = 0
 		m.results.TempF = 0
+		m.results.RH = 0
 	}
 
 	m.expire = time.Now().Add(2 * time.Second)
@@ -180,8 +181,8 @@ func main() {
 	s := &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
 		Handler:      newMux(picoURL, picoName),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  20 * time.Second,
+		WriteTimeout: 20 * time.Second,
 	}
 
 	if err := s.ListenAndServe(); err != nil {
