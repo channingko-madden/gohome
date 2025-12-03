@@ -101,7 +101,7 @@ func blinkLED(dev *cyw43439.Device, blink chan uint) {
 			for i := uint(0); i < n; i++ {
 				lastLedState = !lastLedState
 				changeLEDState(dev, lastLedState)
-				time.Sleep(500 * time.Millisecond)
+				time.Sleep(250 * time.Millisecond)
 			}
 
 			// Ensure LED is on at the end
@@ -119,7 +119,7 @@ func getPicoTemperature() *climate {
 	}
 }
 
-func configureBME280() bme280.Device {
+func configureBME280() *bme280.Device {
 	i2c := machine.I2C1
 	err := i2c.Configure(machine.I2CConfig{
 		SCL: machine.GP19,
@@ -131,10 +131,10 @@ func configureBME280() bme280.Device {
 
 	sensor := bme280.New(i2c)
 	sensor.Configure()
-	return sensor
+	return &sensor
 }
 
-func readBME280(sensor bme280.Device) *climate {
+func readBME280(sensor *bme280.Device) *climate {
 	connected := sensor.Connected()
 	if !connected {
 		logger.Error("failed to detect BME280 with I2C")
@@ -162,7 +162,7 @@ func readBME280(sensor bme280.Device) *climate {
 
 }
 
-func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader, sensor bme280.Device) {
+func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader, sensor *bme280.Device) {
 	resp.SetConnectionClose()
 	logger.Info("Got request...")
 
@@ -231,7 +231,7 @@ func handleConnection(listener *stacks.TCPListener, blink chan uint) {
 		HTTPHandler(conn, &resp, sensor)
 		conn.Close()
 
-		blink <- 5
+		blink <- 3
 	}
 }
 
