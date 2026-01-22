@@ -14,7 +14,6 @@ import (
 
 	"github.com/soypat/seqs/httpx"
 	"github.com/soypat/seqs/stacks"
-	"tinygo.org/x/drivers/bme280"
 )
 
 const (
@@ -119,54 +118,15 @@ func getPicoTemperature() *climate {
 	}
 }
 
-func configureBME280() *bme280.Device {
-	i2c := machine.I2C1
-	err := i2c.Configure(machine.I2CConfig{
-		SCL: machine.GP19,
-		SDA: machine.GP18,
-	})
-	if err != nil {
-		panic("failed to configured I2C:" + err.Error())
-	}
-
-	sensor := bme280.New(i2c)
-	sensor.Configure()
-	return &sensor
+type TemperatureSensor interface {
+	ReadClimate() *climate
 }
 
-func readBME280(sensor *bme280.Device) *climate {
-	connected := sensor.Connected()
-	if !connected {
-		logger.Error("failed to detect BME280 with I2C")
-		return nil
-	}
-	logger.Info("BME280 detected with I2C")
-
-	curTemp, err := sensor.ReadTemperature()
-	if err != nil {
-		logger.Error("error reading BME280 temperature", slog.String("err", err.Error()))
-		return nil
-	}
-
-	curRH, err := sensor.ReadHumidity()
-	if err != nil {
-		logger.Error("error reading BME280 relative humidity", slog.String("err", err.Error()))
-		return nil
-	}
-
-	return &climate{
-		TempC: float64(curTemp) / 1000,
-		TempF: ((float64(curTemp) / 1000) * 9 / 5) + 32,
-		RH:    float64(curRH) / 100,
-	}
-
-}
-
-func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader, sensor *bme280.Device) {
+func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader, sensor TemperatureSensor) {
 	resp.SetConnectionClose()
 	logger.Info("Got request...")
 
-	t := readBME280(sensor)
+	t := sensor.ReadClimate()
 
 	if t == nil {
 		resp.SetStatusCode(500)
@@ -198,7 +158,7 @@ func handleConnection(listener *stacks.TCPListener, blink chan uint) {
 	var resp httpx.ResponseHeader
 	buf := bufio.NewReaderSize(nil, 1024)
 
-	sensor := configureBME280()
+	sensor := configureSensor()
 
 	for {
 		conn, err := listener.Accept()
