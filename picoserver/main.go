@@ -45,6 +45,31 @@ func changeLEDState(dev *cyw43439.Device, state bool) {
 	}
 }
 
+func checkWiFiAndReconnect(dev *cyw43439.Device) bool {
+	if dev.IsLinkUp() {
+		return false
+	}
+
+	logger.Warn("wifi link down, attempting reconnect...")
+	changeLEDState(dev, false)
+
+	for attempt := 0; attempt < 5; attempt++ {
+		err := dev.JoinWPA2(ssid, pass)
+		if err == nil {
+			logger.Info("wifi reconnected successfully")
+			changeLEDState(dev, true)
+			return true
+		}
+		logger.Error("wifi reconnect failed",
+			slog.String("err", err.Error()),
+			slog.Int("attempt", attempt+1))
+		time.Sleep(5 * time.Second)
+	}
+
+	logger.Error("wifi reconnection failed after max attempts")
+	return false
+}
+
 func setupDevice() (*stacks.PortStack, *cyw43439.Device) {
 	_, stack, dev, err := SetupWithDHCP(SetupConfig{
 		Hostname: hostname,
@@ -152,47 +177,7 @@ func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader, sensor Temper
 
 }
 
-func handleConnection(listener *stacks.TCPListener, blink chan uint) {
-	// Reuse the same buffers for each connection to avoid heap allocations.
-	// This is an embedded device remember!
-	var resp httpx.ResponseHeader
-	buf := bufio.NewReaderSize(nil, 1024)
-
-	sensor := configureSensor()
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			logger.Error(
-				"listener accept:",
-				slog.String("err", err.Error()),
-			)
-			time.Sleep(time.Second)
-			continue
-		}
-
-		logger.Info(
-			"new connection",
-			slog.String("remote", conn.RemoteAddr().String()),
-		)
-
-		err = conn.SetDeadline(time.Now().Add(connTimeout))
-		if err != nil {
-			conn.Close()
-			logger.Error(
-				"conn set deadline:",
-				slog.String("err", err.Error()),
-			)
-			continue
-		}
-
-		buf.Reset(conn)
-		resp.Reset()
-		HTTPHandler(conn, &resp, sensor)
-		conn.Close()
-
-		blink <- 3
-	}
+func handleConnection(listener *stacks.TCPListener, blink chan uint, reconnect chan struct{}) {
 }
 
 func main() {
@@ -201,12 +186,56 @@ func main() {
 
 	blink := make(chan uint, 3)
 	go blinkLED(dev, blink)
-	go handleConnection(listener, blink)
+
+	// Reuse the same buffers for each connection to avoid heap allocations.
+	// This is an embedded device remember!
+	var resp httpx.ResponseHeader
+	buf := bufio.NewReaderSize(nil, 1024)
+
+	sensor := configureSensor()
 
 	for {
-		select {
-		case <-time.After(1 * time.Minute):
-			logger.Info("Waiting for connections...")
+		if !dev.IsLinkUp() {
+			if checkWiFiAndReconnect(dev) {
+				listener.Close()
+				listener = newListener(listener.PortStack())
+				logger.Info("listener recreated after wifi reconnect")
+			}
+
+		} else {
+			conn, err := listener.Accept()
+			if err != nil {
+				logger.Error(
+					"listener accept:",
+					slog.String("err", err.Error()),
+				)
+				time.Sleep(time.Second)
+				continue
+			}
+
+			logger.Info(
+				"new connection",
+				slog.String("remote", conn.RemoteAddr().String()),
+			)
+
+			err = conn.SetDeadline(time.Now().Add(connTimeout))
+			if err != nil {
+				conn.Close()
+				logger.Error(
+					"conn set deadline:",
+					slog.String("err", err.Error()),
+				)
+				time.Sleep(time.Second)
+				continue
+			}
+
+			buf.Reset(conn)
+			resp.Reset()
+			HTTPHandler(conn, &resp, sensor)
+			conn.Close()
+
+			blink <- 3
 		}
+		time.Sleep(time.Second)
 	}
 }
