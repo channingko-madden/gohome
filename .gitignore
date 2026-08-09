@@ -38,3 +38,5 @@ secrets.go
 
 # tiny go LSP config file
 .tinygo.json
+
+picoexport/sd_*.yml
