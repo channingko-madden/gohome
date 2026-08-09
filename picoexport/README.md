@@ -2,7 +2,7 @@
 
 For each Pico W running, launch an exporter container for it.
 
-Update the sd_picoexporter.yml file with a new name, correct target, and correct port exposed by the exporter container.
+Update the picoexporter.yml file with a new name, correct target, and correct port exposed by the exporter container.
 
 Then upload into the running prometheus container for discovery.
 

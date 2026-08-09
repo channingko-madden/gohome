@@ -1,8 +1,11 @@
-FROM docker.io/golang:1.25 AS builder
+FROM docker.io/golang:1.26 AS builder
 RUN mkdir /app
 WORKDIR /app
 COPY . /app
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w"
+# Pi
+# RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w"
+# x86
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w"
 
 FROM docker.io/alpine:latest
 RUN mkdir /app && adduser -h /app -D picoexport

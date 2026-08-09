@@ -2,4 +2,4 @@
 - labels:
     job: picoexport_<name>
   targets:
-    - 'picoexport_<name>:<port>'
+    - 'picoexport-<name>:<port>'

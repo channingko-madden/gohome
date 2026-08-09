@@ -10,3 +10,5 @@ docker run -d \
 -p 3100:3000 \
 grafana/grafana
 ```
+
+Grafana web page is on port 3100
