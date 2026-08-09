@@ -1,6 +1,6 @@
 module github.com/channingko-madden/gohome/picoserver
 
-go 1.23.0
+go 1.25
 
 require (
 	github.com/soypat/cyw43439 v0.0.0-20250505012923-830110c8f4af
