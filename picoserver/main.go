@@ -177,9 +177,6 @@ func HTTPHandler(respWriter io.Writer, resp *httpx.ResponseHeader, sensor Temper
 
 }
 
-func handleConnection(listener *stacks.TCPListener, blink chan uint, reconnect chan struct{}) {
-}
-
 func main() {
 	stack, dev := setupDevice()
 	listener := newListener(stack)
